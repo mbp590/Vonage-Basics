@@ -1,2 +1,3 @@
 heroku config:set GITHUB_AUTH_TOKEN=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
 heroku buildpacks:add --index 1 zeke/github
+heroku buildpacks:set heroku/nodejs
