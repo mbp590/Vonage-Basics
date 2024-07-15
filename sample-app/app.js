@@ -1,41 +1,71 @@
-var createError = require('http-errors');
-var express = require('express');
-var path = require('path');
-var cookieParser = require('cookie-parser');
-var logger = require('morgan');
+/* global OT APPLICATION_ID TOKEN SESSION_ID SAMPLE_SERVER_BASE_URL */
 
-var indexRouter = require('./routes/index');
-var usersRouter = require('./routes/users');
+let applicationId;
+let sessionId;
+let token;
 
-var app = express();
+function handleError(error) {
+  if (error) {
+    console.error(error);
+  }
+}
 
-// view engine setup
-app.set('views', path.join(__dirname, 'views'));
-app.set('view engine', 'jade');
+function initializeSession() {
+  const session = OT.initSession(applicationId, sessionId);
 
-app.use(logger('dev'));
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
-app.use(cookieParser());
-app.use(express.static(path.join(__dirname, 'public')));
+  // Subscribe to a newly created stream
+  session.on('streamCreated', (event) => {
+    const subscriberOptions = {
+      insertMode: 'append',
+      width: '100%',
+      height: '100%'
+    };
+    session.subscribe(event.stream, 'subscriber', subscriberOptions, handleError);
+  });
 
-app.use('/', indexRouter);
-app.use('/users', usersRouter);
+  session.on('sessionDisconnected', (event) => {
+    console.log('You were disconnected from the session.', event.reason);
+  });
 
-// catch 404 and forward to error handler
-app.use(function(req, res, next) {
-  next(createError(404));
-});
+  // initialize the publisher
+  const publisherOptions = {
+    insertMode: 'append',
+    width: '100%',
+    height: '100%',
+    resolution: '1280x720'
+  };
+  const publisher = OT.initPublisher('publisher', publisherOptions, handleError);
 
-// error handler
-app.use(function(err, req, res, next) {
-  // set locals, only providing error in development
-  res.locals.message = err.message;
-  res.locals.error = req.app.get('env') === 'development' ? err : {};
+  // Connect to the session
+  session.connect(token, (error) => {
+    if (error) {
+      handleError(error);
+    } else {
+      // If the connection is successful, publish the publisher to the session
+      session.publish(publisher, handleError);
+    }
+  });
+}
 
-  // render the error page
-  res.status(err.status || 500);
-  res.render('error');
-});
+// See the config.js file.
+if (APPLICATION_ID && TOKEN && SESSION_ID) {
+  applicationId = APPLICATION_ID;
+  sessionId = SESSION_ID;
+  token = TOKEN;
+  initializeSession();
+} else if (SAMPLE_SERVER_BASE_URL) {
+  // Make a GET request to get the Vonage Video Application ID, session ID, and token from the server
+  fetch(SAMPLE_SERVER_BASE_URL + '/session')
+  .then((response) => response.json())
+  .then((json) => {
+    applicationId = json.applicationId;
+    sessionId = json.sessionId;
+    token = json.token;
+    // Initialize an Vonage Video Session object
+    initializeSession();
+  }).catch((error) => {
+    handleError(error);
+    alert('Failed to get Vonage Video sessionId and token. Make sure you have updated the config.js file.');
+  });
+}
 
-module.exports = app;
