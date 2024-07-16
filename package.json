@@ -3,7 +3,8 @@
     "start": "npx sirv --host 0.0.0.0 --port $PORT"
   },
   "dependencies": {
-    "@vonage/noise-suppression": "^1.0.0"
+    "@vonage/noise-suppression": "^1.0.0",
+    "sirv-cli": "^2.0.2"
   },
   "devDependencies": {
     "sirv-cli": "^2.0.2"
