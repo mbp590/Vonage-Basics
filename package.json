@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "start": "sirv --dev"
+    "start": "npx sirv --host 0.0.0.0 --port $PORT"
   },
   "dependencies": {
     "@vonage/noise-suppression": "^1.0.0"
